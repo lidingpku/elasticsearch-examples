@@ -1,0 +1,79 @@
+# use localhost
+
+
+# create es index
+curl -X PUT "localhost:9200/esex_date" -d'
+{}
+'
+
+
+# add data
+curl -s -XPOST 'http://localhost:9200/_bulk' --data-binary '
+{ "index" : {"_id" : "1", "_type" : "doc", "_index" : "esex_date"} }
+{ "birthDate": "2018-01-01", "name":"John"}
+{ "index" : {"_id" : "2", "_type" : "doc", "_index" : "esex_date"} }
+{ "birthDate": "2017-01-01", "name":"Tod"}
+{ "index" : {"_id" : "3", "_type" : "doc", "_index" : "esex_date"} }
+{ "birthDate": "2017-02-01", "name":"Alice"}
+'
+
+# search  data
+curl -s -XPOST 'http://localhost:9200/esex_date/_search?pretty&size=1'
+
+# view mappings
+curl -s -XGET 'http://localhost:9200/esex_date/_mapping?pretty'
+
+# query data using script "select first month"
+# https://github.com/olivere/elastic/issues/643  >5.2 use source instead of inline
+curl -X GET "localhost:9200/esex_date/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+    "query": {
+        "bool" : {
+            "must" : {
+                "script" : {
+                    "script" : {
+                        "inline" : "doc[\u0027birthDate\u0027].getMonth() == month",
+                        "lang"   : "expression",
+                        "params" : {
+                            "month" : 0
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+'
+
+# query data using script "select first day of year"
+# https://www.elastic.co/guide/en/elasticsearch/reference/2.4/modules-scripting.html
+curl -X GET "localhost:9200/esex_date/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+    "query": {
+        "bool" : {
+            "must" : [{
+                "script" : {
+                    "script" : {
+                        "inline" : "doc[\u0027birthDate\u0027].getMonth() == month",
+                        "lang"   : "expression",
+                        "params" : {
+                            "month" : 0
+                        }
+                    }
+                }
+            },{
+                "script" : {
+                    "script" : {
+                        "inline" : "doc[\u0027birthDate\u0027].getDayOfMonth() == day",
+                        "lang"   : "expression",
+                        "params" : {
+                            "day" : 1
+                        }
+                    }
+                }
+            }
+            ]
+        }
+    }
+}
+'
